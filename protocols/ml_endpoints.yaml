@@ -1,0 +1,231 @@
+swagger: '2.0'
+info:
+  version: '1.0'
+  title: 'JHProject ML API'
+  description: 'Machine learning API for 2017 JH Project.'
+  
+# Added by API Auto Mocking Plugin
+host: localhost:3000
+schemes:
+ - https
+
+paths:
+  /training/{model_id}:
+    post:
+      tags:
+        - training
+      summary: Start training a machine-learning model with the given model_id.
+      operationId: createModel
+      consumes:
+        - application/vnd.api+json
+      produces:
+        - application/vnd.api+json
+      parameters:
+        - name: model_id
+          in: path
+          description: Model UUID
+          required: true
+          type: string
+        - name: data
+          in: body
+          description: data
+          required: true
+          schema:
+            $ref: '#/definitions/CreateModel'
+      responses:
+        201:
+          description: Model in training
+        404:
+          description: If any of the algorithm, training_data, input_columns, or output_columns do not exist.
+          schema:
+            $ref: '#/definitions/404Error'
+            
+    get:
+      tags:
+        - training
+      summary: Get status of model training.
+      operationId: status
+      parameters:
+        - name: model_id
+          in: path
+          description: Model UUID
+          required: true
+          type: string
+      responses:
+        200:
+          description: "Training status sent."
+          schema:
+            $ref: '#/definitions/Status'
+        404:
+          description: "If model_id does not exist."
+          schema:
+            $ref: '#/definitions/404Error'
+          
+    delete:
+      tags:
+        - training
+      summary: Forcefully stop training a model. Its current state will be stored.
+      operationId: stopTraining
+      produces:
+        - application/vnd.api+json
+      parameters:
+        - name: model_id
+          in: path
+          description: Model UUID
+          required: true
+          type: string
+      responses:
+        204:
+          # TODO need to return a response here
+          description: "Partially trained model successfully stopped."
+        404:
+          description: "If model provided does not exist."
+          schema:
+            $ref: '#/definitions/404Error'
+          
+  /model/{model_id}/prediction:
+    get:
+      tags:
+        - model
+      summary: Get a prediction given a model and input data.
+      operationId: getPrediction
+      produces:
+        - application/vnd.api+json
+      parameters:
+        - name: model_id
+          in: path
+          description: Model UUID
+          required: true
+          type: string
+        - name: input_data
+          in: query
+          description: Input data UUID
+          required: true
+          type: string
+      responses:
+        200:
+          description: "Prediction results were successfully calculated."
+          schema:
+            $ref: '#/definitions/GetPrediction'
+        404:
+          description: "If model or input_data does not exist."
+          schema:
+            $ref: '#/definitions/404Error'#
+          
+  /suggest:
+    get:
+      summary: Suggest relevant ML algorithms for a given training set.
+      operationId: suggest
+      produces:
+        - application/vnd.api+json
+      parameters:
+        - name: data_id
+          in: query
+          description: Data file UUID
+          required: true
+          type: string
+        - name: input_columns
+          in: query
+          required: true
+          type: array
+          items:
+            type: integer
+        - name: output_columns
+          in: query
+          required: true
+          type: array
+          items:
+            type: integer
+      responses:
+        200:
+          description: "List of suggested algorithms found. The returned algorithms each have a score associated for ranking purposes, but implementations are not required to provide accurate scores - in this case, all scores should be the same."
+          schema:
+            $ref: '#/definitions/Suggestions'
+        404:
+          description: "If any of input_columns, output_columns, or data_file provided do not exist."
+          schema:
+            $ref: '#/definitions/404Error'
+            
+definitions:
+  404Error:
+    type: object
+    properties:
+      error:
+        $ref: '#/definitions/404ErrorError'
+  404ErrorError:
+    type: object
+    properties:
+      missing_fields:
+        type: array
+        items:
+          type: string
+          example: "input_data"
+  CreateModel:
+    type: object
+    properties:
+      data:
+        $ref: '#/definitions/CreateModelData'
+  CreateModelData:
+    type: object
+    properties:
+      algorithm:
+        type: string
+        example: naive-bayes
+      training_data:
+        type: string
+        example: bccf2c80-8ebb-4bec-a15c-6f699f36e765
+      input_columns:
+        type: array
+        items:
+          type: integer
+      output_columns:
+        type: array
+        items:
+          type: integer
+  GetPrediction:
+    type: object
+    properties:
+      data:
+        $ref: '#/definitions/GetPredictionData'
+  GetPredictionData:
+    type: object
+    properties:
+      results:
+        type: array
+        items:
+          type: array
+          items:
+            description: Data items - can be any value type.
+  Status:
+    type: object
+    properties:
+      data:
+        $ref: '#/definitions/StatusData'
+  StatusData:
+    type: object
+    properties:
+      percent_trained:
+        minimum: 0
+        maximum: 1
+        type: number
+  Suggestions:
+    type: object
+    properties:
+      data:
+        $ref: '#/definitions/SuggestionsData'
+  SuggestionsData:
+    type: object
+    properties:
+      algorithms:
+        type: array
+        items:
+          type: object
+          properties:
+            name: 
+              type: string
+              example: naive-bayes
+            score: 
+              type: number
+              minimum: 0
+              maximum: 1
+              example: 0.3
